@@ -7,19 +7,65 @@ output:
 
 
 ## Loading and preprocessing the data
-
-
+```{r, echo=TRUE}
+library(ggplot2)
+unzip(zipfile = "activity.zip")
+activity <- read.csv("activity.csv")
+activity_complete <- activity[complete.cases(activity),]
+```
 
 ## What is mean total number of steps taken per day?
+```{r, echo=TRUE}
+total_per_day <- aggregate(activity_complete$steps, by=list(activity_complete$date), FUN=sum)
+colnames(total_per_day) <- c("date", "total_steps")
+print(total_per_day)
 
+hist(total_per_day$total_steps, breaks=10, xlab="Total number of steps per day", main="")
+print(paste0("Total steps mean: ",round(mean(total_per_day$total_steps))))
+print(paste0("Total steps median: ",round(median(total_per_day$total_steps))))
+```
 
 
 ## What is the average daily activity pattern?
+```{r, echo=TRUE}
+average_interval <- aggregate(activity_complete$steps, by=list(activity_complete$interval), FUN=mean)
+colnames(average_interval) <- c("interval", "average_steps")
 
+plot(average_interval$interval, average_interval$average_steps, type="l", xlab="interval", ylab="average steps")
 
-
+max_interval <- average_interval$interval[max(average_interval$average_steps)==average_interval$average_steps]
+print(paste0("Interval with the maximum number of steps: ",paste(max_interval, collapse=",")
+              ))
+```
 ## Imputing missing values
+```{r,echo=TRUE}
 
+# let's take average per interval and use for filling empty values:
+
+for(i in 1:nrow(activity)){
+    if(!is.na(activity$steps[i])){next}
+    value = average_interval$average_steps[average_interval$interval==activity$interval[i]]
+    activity$steps[i] <- value
+}
+total_per_day_full <- aggregate(activity$steps, by=list(activity$date), FUN=sum)
+colnames(total_per_day_full) <- c("date", "total_steps")
+print(total_per_day_full)
+
+hist(total_per_day_full$total_steps, breaks=10, xlab="Total number of steps per day", main="")
+print(paste0("Total steps mean: ",round(mean(total_per_day_full$total_steps))))
+print(paste0("Total steps median: ",round(median(total_per_day_full$total_steps))))
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+weekday <- c('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday')
+activity$day <- NA
+for(i in 1:nrow(activity)){
+    activity$day[i] <- if(weekdays(as.Date(activity$date[i])) %in% weekday){"weekday"} else{"weekend"}
+}
+
+average_interval_full <- aggregate(activity$steps, by=list(activity$interval, activity$day), FUN=mean)
+colnames(average_interval_full) <- c("interval", "day", "average_steps")
+
+qplot(x=interval, y=average_steps, data=average_interval_full, geom="line",facets=day~.)
+
+
